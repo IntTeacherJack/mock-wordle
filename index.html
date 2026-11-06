@@ -22,7 +22,7 @@
       .stats i { width: 5px; border: 2px solid #1a1a1b; display: block; } .stats i:nth-child(1) { height: 11px; } .stats i:nth-child(2) { height: 18px; } .stats i:nth-child(3) { height: 14px; }
       .help { font-size: 1.45rem; font-weight: 700; line-height: 1; border: 2px solid #1a1a1b; width: 22px; height: 22px; border-radius: 50%; }
       .settings-mark { font-size: 1.65rem; line-height: 1; }
-      main { min-height: calc(100vh - 55px); display: grid; grid-template-rows: minmax(18px, 1fr) auto minmax(8px, .16fr) auto minmax(10px, .45fr) auto; justify-items: center; padding: 0 10px 16px; }
+      main { min-height: calc(100vh - 55px); display: grid; grid-template-rows: minmax(18px, 1fr) auto minmax(8px, .16fr) auto minmax(10px, .35fr); justify-items: center; padding: 0 10px 16px; }
       #toast { grid-row: 1; align-self: end; margin-bottom: 8px; }
       #board { grid-row: 2; width: min(350px, calc(100vw - 32px)); display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
       .tile { aspect-ratio: 1; border: 2px solid var(--light); display: flex; align-items: center; justify-content: center; font-size: clamp(1.55rem, 7vw, 2rem); font-weight: 700; line-height: 1; text-transform: uppercase; user-select: none; }
@@ -38,7 +38,6 @@
       .key.present { color: #fff; background: var(--yellow); }
       .key.absent { color: #fff; background: var(--gray); }
       #toast { min-height: 1.4em; font-size: .9rem; font-weight: 700; text-align: center; }
-      .footer { grid-row: 6; color: #5e5e5e; font-size: .67rem; line-height: 1.5; text-align: center; }
       dialog { border: 0; border-radius: 8px; padding: 0; width: min(390px, calc(100vw - 32px)); box-shadow: 0 6px 32px rgba(0, 0, 0, .25); }
       dialog::backdrop { background: rgba(0, 0, 0, .45); }
       .panel { padding: 26px; }
@@ -51,7 +50,7 @@
       .secondary { background: #e7e7e7; color: #222; }
       .primary { background: var(--green); color: #fff; }
       @keyframes pop { 50% { transform: scale(1.08); } }
-      @media (max-height: 670px) { main { grid-template-rows: minmax(6px, .2fr) auto 8px auto 8px auto; } .key { height: 48px; } .footer { display: none; } }
+      @media (max-height: 670px) { main { grid-template-rows: minmax(6px, .2fr) auto 8px auto 8px; } .key { height: 48px; } }
     </style>
   </head>
   <body>
@@ -63,7 +62,6 @@
       <div id="toast" role="status" aria-live="polite"></div>
       <section id="board" aria-label="Six rows of five letter guesses"></section>
       <section id="keyboard" aria-label="On-screen keyboard"></section>
-      <footer class="footer">© 2026 Classroom Word Game &nbsp;|&nbsp; Vocabulary Practice &nbsp;|&nbsp; Teacher Edition</footer>
     </main>
     <dialog id="teacher-dialog">
       <form id="teacher-form" class="panel">
@@ -156,7 +154,7 @@
         const response = await fetch('/api/game');
         game = await response.json();
         render();
-        if (game.status === 'ready') { show('Teacher: use the gear to set today’s word.'); dialog.showModal(); }
+        if (game.status === 'ready') show('Choose a word from the menu to begin.');
       }
       document.addEventListener('keydown', (event) => {
         if (dialog.open || event.ctrlKey || event.metaKey || event.altKey) return;
