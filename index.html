@@ -3,91 +3,170 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mock Wordle</title>
+    <title>Wordle</title>
     <style>
-      :root { color-scheme: light; font-family: Arial, sans-serif; }
+      :root { --green: #6aaa64; --yellow: #c9b458; --gray: #787c7e; --light: #d3d6da; --key: #d3d6da; font-family: Arial, Helvetica, sans-serif; color: #1a1a1b; }
       * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f7f7f7; color: #212121; }
-      main { width: min(100%, 420px); padding: 24px; text-align: center; }
-      h1 { margin: 0 0 8px; font-size: 2rem; letter-spacing: .04em; }
-      p { margin: 0 0 22px; color: #666; }
-      #board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 22px; }
-      .tile { aspect-ratio: 1; display: grid; place-items: center; border: 2px solid #d3d6da; background: #fff; font-size: 1.9rem; font-weight: 700; text-transform: uppercase; }
-      .correct { background: #6aaa64; border-color: #6aaa64; color: white; }
-      .present { background: #c9b458; border-color: #c9b458; color: white; }
-      .absent { background: #787c7e; border-color: #787c7e; color: white; }
-      form { display: flex; gap: 8px; }
-      input, button { min-height: 44px; border-radius: 4px; font: inherit; }
-      input { min-width: 0; flex: 1; padding: 0 12px; border: 1px solid #aaa; text-transform: uppercase; }
-      button { padding: 0 18px; border: 0; background: #6aaa64; color: #fff; font-weight: 700; cursor: pointer; }
-      #message { min-height: 1.5em; margin-top: 14px; font-weight: 700; }
+      body { margin: 0; background: #fff; min-height: 100vh; }
+      button, input { font: inherit; }
+      header { height: 65px; border-bottom: 1px solid #d3d6da; display: flex; align-items: center; justify-content: center; position: relative; }
+      h1 { margin: 0; font-size: 2.25rem; letter-spacing: .01em; font-weight: 700; }
+      .icon-button { border: 0; background: transparent; color: #1a1a1b; cursor: pointer; position: absolute; right: 18px; width: 42px; height: 42px; font-size: 1.5rem; }
+      main { display: flex; min-height: calc(100vh - 65px); flex-direction: column; align-items: center; justify-content: center; gap: 26px; padding: 18px 0; }
+      #board { width: min(350px, calc(100vw - 32px)); display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+      .tile { aspect-ratio: 1; border: 2px solid var(--light); display: flex; align-items: center; justify-content: center; font-size: clamp(1.55rem, 7vw, 2rem); font-weight: 700; line-height: 1; text-transform: uppercase; user-select: none; }
+      .tile.filled { border-color: #878a8c; animation: pop 90ms linear; }
+      .tile.correct { color: #fff; background: var(--green); border-color: var(--green); }
+      .tile.present { color: #fff; background: var(--yellow); border-color: var(--yellow); }
+      .tile.absent { color: #fff; background: var(--gray); border-color: var(--gray); }
+      #keyboard { width: min(510px, 100vw); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 8px; }
+      .key-row { display: flex; gap: 6px; width: 100%; justify-content: center; }
+      .key { height: 58px; min-width: 31px; flex: 1; max-width: 43px; border: 0; border-radius: 4px; color: #1a1a1b; background: var(--key); font-size: .78rem; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+      .key.wide { flex: 1.5; max-width: 68px; font-size: .65rem; }
+      .key.correct { color: #fff; background: var(--green); }
+      .key.present { color: #fff; background: var(--yellow); }
+      .key.absent { color: #fff; background: var(--gray); }
+      #toast { min-height: 1.4em; font-size: .9rem; font-weight: 700; text-align: center; }
+      dialog { border: 0; border-radius: 8px; padding: 0; width: min(390px, calc(100vw - 32px)); box-shadow: 0 6px 32px rgba(0, 0, 0, .25); }
+      dialog::backdrop { background: rgba(0, 0, 0, .45); }
+      .panel { padding: 26px; }
+      .panel h2 { margin: 0 0 10px; font-size: 1.35rem; }
+      .panel p { margin: 0 0 20px; line-height: 1.45; color: #565758; }
+      .panel label { display: block; font-size: .82rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 7px; }
+      .panel input { width: 100%; height: 48px; padding: 0 12px; border: 2px solid #878a8c; border-radius: 4px; font-size: 1.1rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+      .panel footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+      .panel button { height: 42px; padding: 0 16px; border: 0; border-radius: 4px; font-weight: 700; cursor: pointer; }
+      .secondary { background: #e7e7e7; color: #222; }
+      .primary { background: var(--green); color: #fff; }
+      @keyframes pop { 50% { transform: scale(1.08); } }
+      @media (max-height: 670px) { main { justify-content: flex-start; gap: 15px; } .key { height: 48px; } }
     </style>
   </head>
   <body>
+    <header>
+      <h1>WORDLE</h1>
+      <button id="settings" class="icon-button" aria-label="Teacher settings" title="Teacher settings">⚙</button>
+    </header>
     <main>
-      <h1>Mock Wordle</h1>
-      <p>Guess the five-letter word in six tries.</p>
-      <section id="board" aria-label="Word grid"></section>
-      <form id="guess-form">
-        <input id="guess" maxlength="5" minlength="5" pattern="[A-Za-z]{5}" aria-label="Your five-letter guess" autocomplete="off" required autofocus />
-        <button>Guess</button>
-      </form>
-      <div id="message" aria-live="polite"></div>
+      <div id="toast" role="status" aria-live="polite"></div>
+      <section id="board" aria-label="Six rows of five letter guesses"></section>
+      <section id="keyboard" aria-label="On-screen keyboard"></section>
     </main>
+    <dialog id="teacher-dialog">
+      <form id="teacher-form" class="panel">
+        <h2>Teacher settings</h2>
+        <p>Enter a five-letter vocabulary word before sharing your screen. The word remains on the local server and is not sent to the game screen.</p>
+        <label for="answer">New answer</label>
+        <input id="answer" name="answer" maxlength="5" pattern="[A-Za-z]{5}" autocomplete="off" required autofocus />
+        <footer>
+          <button type="button" class="secondary" id="cancel">Cancel</button>
+          <button class="primary">Start new game</button>
+        </footer>
+      </form>
+    </dialog>
     <script>
-      const word = 'CRANE';
       const board = document.querySelector('#board');
-      const form = document.querySelector('#guess-form');
-      const input = document.querySelector('#guess');
-      const message = document.querySelector('#message');
-      let row = 0;
+      const keyboard = document.querySelector('#keyboard');
+      const toast = document.querySelector('#toast');
+      const dialog = document.querySelector('#teacher-dialog');
+      const teacherForm = document.querySelector('#teacher-form');
+      let game = { guesses: [], status: 'ready' };
+      let draft = '';
+      const keys = ['QWERTYUIOP', 'ASDFGHJKL', '↵ZXCVBNM⌫'];
 
       for (let i = 0; i < 30; i += 1) {
         const tile = document.createElement('div');
         tile.className = 'tile';
         board.append(tile);
       }
-
-      form.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const guess = input.value.trim().toUpperCase();
-        if (!/^[A-Z]{5}$/.test(guess)) return;
-
-        const remaining = word.split('');
-        const states = Array(5).fill('absent');
-        [...guess].forEach((letter, index) => {
-          if (letter === word[index]) {
-            states[index] = 'correct';
-            remaining[index] = null;
-          }
+      keys.forEach((letters, rowIndex) => {
+        const row = document.createElement('div');
+        row.className = 'key-row';
+        [...letters].forEach((letter) => {
+          const button = document.createElement('button');
+          button.className = `key${letter === '↵' || letter === '⌫' ? ' wide' : ''}`;
+          button.textContent = letter === '↵' ? 'ENTER' : letter === '⌫' ? '⌫' : letter;
+          button.dataset.key = letter;
+          button.addEventListener('click', () => handleKey(letter));
+          row.append(button);
         });
-        [...guess].forEach((letter, index) => {
-          if (states[index] !== 'correct' && remaining.includes(letter)) {
-            states[index] = 'present';
-            remaining[remaining.indexOf(letter)] = null;
-          }
-        });
-
-        [...guess].forEach((letter, index) => {
-          const tile = board.children[row * 5 + index];
-          tile.textContent = letter;
-          tile.classList.add(states[index]);
-        });
-
-        row += 1;
-        input.value = '';
-        if (guess === word) {
-          message.textContent = 'You got it!';
-          input.disabled = true;
-          form.querySelector('button').disabled = true;
-        } else if (row === 6) {
-          message.textContent = `The word was ${word}.`;
-          input.disabled = true;
-          form.querySelector('button').disabled = true;
-        } else {
-          message.textContent = `${6 - row} guesses remaining.`;
-        }
+        keyboard.append(row);
       });
+
+      function render() {
+        [...board.children].forEach((tile) => { tile.className = 'tile'; tile.textContent = ''; });
+        game.guesses.forEach(({ word, states }, row) => {
+          [...word].forEach((letter, column) => {
+            const tile = board.children[row * 5 + column];
+            tile.textContent = letter;
+            tile.classList.add('filled', states[column]);
+          });
+        });
+        if (game.status === 'playing' || game.status === 'ready') {
+          [...draft].forEach((letter, column) => {
+            const tile = board.children[game.guesses.length * 5 + column];
+            if (tile) { tile.textContent = letter; tile.classList.add('filled'); }
+          });
+        }
+        const rank = { absent: 1, present: 2, correct: 3 };
+        const stateByKey = {};
+        game.guesses.forEach(({ word, states }) => [...word].forEach((letter, index) => {
+          if (!stateByKey[letter] || rank[states[index]] > rank[stateByKey[letter]]) stateByKey[letter] = states[index];
+        }));
+        document.querySelectorAll('.key').forEach((key) => {
+          key.classList.remove('correct', 'present', 'absent');
+          if (stateByKey[key.dataset.key]) key.classList.add(stateByKey[key.dataset.key]);
+        });
+      }
+
+      function show(message) { toast.textContent = message; }
+      function handleKey(key) {
+        if (game.status !== 'playing') return;
+        if (key === '⌫') draft = draft.slice(0, -1);
+        else if (key === '↵') submitGuess();
+        else if (draft.length < 5) draft += key;
+        render();
+      }
+      async function submitGuess() {
+        if (draft.length !== 5) return show('Not enough letters');
+        const response = await fetch('/api/guess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ guess: draft }) });
+        const result = await response.json();
+        if (!response.ok) return show(result.error || 'Try again');
+        game = result.game;
+        draft = '';
+        render();
+        if (game.status === 'won') show('Excellent!');
+        else if (game.status === 'lost') show('Great effort!');
+        else show('');
+      }
+      async function loadGame() {
+        const response = await fetch('/api/game');
+        game = await response.json();
+        render();
+        if (game.status === 'ready') { show('Teacher: use the gear to set today’s word.'); dialog.showModal(); }
+      }
+      document.addEventListener('keydown', (event) => {
+        if (dialog.open || event.ctrlKey || event.metaKey || event.altKey) return;
+        if (event.key === 'Enter') handleKey('↵');
+        else if (event.key === 'Backspace') handleKey('⌫');
+        else if (/^[a-zA-Z]$/.test(event.key)) handleKey(event.key.toUpperCase());
+      });
+      document.querySelector('#settings').addEventListener('click', () => dialog.showModal());
+      document.querySelector('#cancel').addEventListener('click', () => dialog.close());
+      teacherForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const answer = new FormData(teacherForm).get('answer').trim().toUpperCase();
+        const response = await fetch('/api/game', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answer }) });
+        const result = await response.json();
+        if (!response.ok) return show(result.error || 'Please enter five letters.');
+        game = result.game;
+        draft = '';
+        teacherForm.reset();
+        dialog.close();
+        show('New game ready — invite the class to guess!');
+        render();
+      });
+      loadGame();
     </script>
   </body>
 </html>
