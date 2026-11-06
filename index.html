@@ -83,7 +83,8 @@
       const toast = document.querySelector('#toast');
       const dialog = document.querySelector('#teacher-dialog');
       const teacherForm = document.querySelector('#teacher-form');
-      let game = { guesses: [], status: 'ready' };
+      const storageKey = 'classroom-wordle-game';
+      let game = loadSavedGame();
       let draft = '';
       let revealing = false;
       const keys = ['QWERTYUIOP', 'ASDFGHJKL', '↵ZXCVBNM⌫'];
@@ -134,6 +135,35 @@
       }
 
       function show(message) { toast.textContent = message; }
+      function loadSavedGame() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(storageKey));
+          if (saved && Array.isArray(saved.guesses) && ['ready', 'playing', 'won', 'lost'].includes(saved.status)) return saved;
+        } catch { /* Start a new game when no saved data is available. */ }
+        return { answer: null, guesses: [], status: 'ready' };
+      }
+      function saveGame() {
+        localStorage.setItem(storageKey, JSON.stringify(game));
+      }
+      function evaluateGuess(guess) {
+        const remaining = game.answer.split('');
+        const states = Array(5).fill('absent');
+        [...guess].forEach((letter, index) => {
+          if (letter === game.answer[index]) {
+            states[index] = 'correct';
+            remaining[index] = null;
+          }
+        });
+        [...guess].forEach((letter, index) => {
+          if (states[index] === 'correct') return;
+          const foundAt = remaining.indexOf(letter);
+          if (foundAt !== -1) {
+            states[index] = 'present';
+            remaining[foundAt] = null;
+          }
+        });
+        return states;
+      }
       function handleKey(key) {
         if (game.status !== 'playing' || revealing) return;
         if (key === '⌫') draft = draft.slice(0, -1);
@@ -159,24 +189,21 @@
       async function submitGuess() {
         if (draft.length !== 5) return show('Not enough letters');
         revealing = true;
-        const response = await fetch('/api/guess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ guess: draft }) });
-        const result = await response.json();
-        if (!response.ok) { revealing = false; return show(result.error || 'Try again'); }
         const row = game.guesses.length;
-        const revealedGuess = result.game.guesses[row];
+        const revealedGuess = { word: draft, states: evaluateGuess(draft) };
         draft = '';
         render();
         await revealGuess(revealedGuess, row);
-        game = result.game;
+        game.guesses.push(revealedGuess);
+        game.status = revealedGuess.word === game.answer ? 'won' : game.guesses.length === 6 ? 'lost' : 'playing';
+        saveGame();
         revealing = false;
         render();
         if (game.status === 'won') show('Excellent!');
         else if (game.status === 'lost') show('Great effort!');
         else show('');
       }
-      async function loadGame() {
-        const response = await fetch('/api/game');
-        game = await response.json();
+      function loadGame() {
         render();
         if (game.status === 'ready') show('Choose a word from the menu to begin.');
       }
@@ -193,13 +220,12 @@
         setTimeout(() => board.focus(), 0);
       }
       document.querySelector('#cancel').addEventListener('click', closeTeacherDialog);
-      teacherForm.addEventListener('submit', async (event) => {
+      teacherForm.addEventListener('submit', (event) => {
         event.preventDefault();
         const answer = new FormData(teacherForm).get('answer').trim().toUpperCase();
-        const response = await fetch('/api/game', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answer }) });
-        const result = await response.json();
-        if (!response.ok) return show(result.error || 'Please enter five letters.');
-        game = result.game;
+        if (!/^[A-Z]{5}$/.test(answer)) return show('Use a five-letter word.');
+        game = { answer, guesses: [], status: 'playing' };
+        saveGame();
         draft = '';
         teacherForm.reset();
         closeTeacherDialog();
