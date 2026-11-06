@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mock Wordle</title>
+    <style>
+      :root { color-scheme: light; font-family: Arial, sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f7f7f7; color: #212121; }
+      main { width: min(100%, 420px); padding: 24px; text-align: center; }
+      h1 { margin: 0 0 8px; font-size: 2rem; letter-spacing: .04em; }
+      p { margin: 0 0 22px; color: #666; }
+      #board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 22px; }
+      .tile { aspect-ratio: 1; display: grid; place-items: center; border: 2px solid #d3d6da; background: #fff; font-size: 1.9rem; font-weight: 700; text-transform: uppercase; }
+      .correct { background: #6aaa64; border-color: #6aaa64; color: white; }
+      .present { background: #c9b458; border-color: #c9b458; color: white; }
+      .absent { background: #787c7e; border-color: #787c7e; color: white; }
+      form { display: flex; gap: 8px; }
+      input, button { min-height: 44px; border-radius: 4px; font: inherit; }
+      input { min-width: 0; flex: 1; padding: 0 12px; border: 1px solid #aaa; text-transform: uppercase; }
+      button { padding: 0 18px; border: 0; background: #6aaa64; color: #fff; font-weight: 700; cursor: pointer; }
+      #message { min-height: 1.5em; margin-top: 14px; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Mock Wordle</h1>
+      <p>Guess the five-letter word in six tries.</p>
+      <section id="board" aria-label="Word grid"></section>
+      <form id="guess-form">
+        <input id="guess" maxlength="5" minlength="5" pattern="[A-Za-z]{5}" aria-label="Your five-letter guess" autocomplete="off" required autofocus />
+        <button>Guess</button>
+      </form>
+      <div id="message" aria-live="polite"></div>
+    </main>
+    <script>
+      const word = 'CRANE';
+      const board = document.querySelector('#board');
+      const form = document.querySelector('#guess-form');
+      const input = document.querySelector('#guess');
+      const message = document.querySelector('#message');
+      let row = 0;
+
+      for (let i = 0; i < 30; i += 1) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        board.append(tile);
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const guess = input.value.trim().toUpperCase();
+        if (!/^[A-Z]{5}$/.test(guess)) return;
+
+        const remaining = word.split('');
+        const states = Array(5).fill('absent');
+        [...guess].forEach((letter, index) => {
+          if (letter === word[index]) {
+            states[index] = 'correct';
+            remaining[index] = null;
+          }
+        });
+        [...guess].forEach((letter, index) => {
+          if (states[index] !== 'correct' && remaining.includes(letter)) {
+            states[index] = 'present';
+            remaining[remaining.indexOf(letter)] = null;
+          }
+        });
+
+        [...guess].forEach((letter, index) => {
+          const tile = board.children[row * 5 + index];
+          tile.textContent = letter;
+          tile.classList.add(states[index]);
+        });
+
+        row += 1;
+        input.value = '';
+        if (guess === word) {
+          message.textContent = 'You got it!';
+          input.disabled = true;
+          form.querySelector('button').disabled = true;
+        } else if (row === 6) {
+          message.textContent = `The word was ${word}.`;
+          input.disabled = true;
+          form.querySelector('button').disabled = true;
+        } else {
+          message.textContent = `${6 - row} guesses remaining.`;
+        }
+      });
+    </script>
+  </body>
+</html>
