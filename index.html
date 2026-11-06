@@ -30,6 +30,7 @@
       .tile.correct { color: #fff; background: var(--green); border-color: var(--green); }
       .tile.present { color: #fff; background: var(--yellow); border-color: var(--yellow); }
       .tile.absent { color: #fff; background: var(--gray); border-color: var(--gray); }
+      .tile.revealing { animation: flip .5s ease forwards; }
       #keyboard { grid-row: 4; width: min(610px, 100vw); display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 0 8px; }
       .key-row { display: flex; gap: 6px; width: 100%; justify-content: center; }
       .key { height: 58px; min-width: 30px; flex: 1; max-width: 54px; border: 0; border-radius: 4px; color: #1a1a1b; background: var(--key); font-size: .84rem; font-weight: 700; cursor: pointer; text-transform: uppercase; }
@@ -50,6 +51,7 @@
       .secondary { background: #e7e7e7; color: #222; }
       .primary { background: var(--green); color: #fff; }
       @keyframes pop { 50% { transform: scale(1.08); } }
+      @keyframes flip { 0% { transform: rotateX(0); } 49% { transform: rotateX(90deg); } 51% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
       @media (max-height: 670px) { main { grid-template-rows: minmax(6px, .2fr) auto 8px auto 8px; } .key { height: 48px; } }
     </style>
   </head>
@@ -60,7 +62,7 @@
     </header>
     <main>
       <div id="toast" role="status" aria-live="polite"></div>
-      <section id="board" aria-label="Six rows of five letter guesses"></section>
+      <section id="board" tabindex="-1" aria-label="Six rows of five letter guesses"></section>
       <section id="keyboard" aria-label="On-screen keyboard"></section>
     </main>
     <dialog id="teacher-dialog">
@@ -83,6 +85,7 @@
       const teacherForm = document.querySelector('#teacher-form');
       let game = { guesses: [], status: 'ready' };
       let draft = '';
+      let revealing = false;
       const keys = ['QWERTYUIOP', 'ASDFGHJKL', '↵ZXCVBNM⌫'];
 
       for (let i = 0; i < 30; i += 1) {
@@ -132,19 +135,40 @@
 
       function show(message) { toast.textContent = message; }
       function handleKey(key) {
-        if (game.status !== 'playing') return;
+        if (game.status !== 'playing' || revealing) return;
         if (key === '⌫') draft = draft.slice(0, -1);
         else if (key === '↵') submitGuess();
         else if (draft.length < 5) draft += key;
         render();
       }
+      const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+      async function revealGuess(guess, row) {
+        const delay = 320;
+        [...guess.word].forEach((letter, column) => {
+          const tile = board.children[row * 5 + column];
+          setTimeout(() => {
+            tile.textContent = letter;
+            tile.className = 'tile filled revealing';
+            setTimeout(() => tile.classList.add(guess.states[column]), 245);
+          }, column * delay);
+        });
+        await wait((guess.word.length - 1) * delay + 520);
+      }
+
       async function submitGuess() {
         if (draft.length !== 5) return show('Not enough letters');
+        revealing = true;
         const response = await fetch('/api/guess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ guess: draft }) });
         const result = await response.json();
-        if (!response.ok) return show(result.error || 'Try again');
-        game = result.game;
+        if (!response.ok) { revealing = false; return show(result.error || 'Try again'); }
+        const row = game.guesses.length;
+        const revealedGuess = result.game.guesses[row];
         draft = '';
+        render();
+        await revealGuess(revealedGuess, row);
+        game = result.game;
+        revealing = false;
         render();
         if (game.status === 'won') show('Excellent!');
         else if (game.status === 'lost') show('Great effort!');
@@ -163,7 +187,12 @@
         else if (/^[a-zA-Z]$/.test(event.key)) handleKey(event.key.toUpperCase());
       });
       document.querySelector('#settings').addEventListener('click', () => dialog.showModal());
-      document.querySelector('#cancel').addEventListener('click', () => dialog.close());
+      function closeTeacherDialog() {
+        document.activeElement?.blur();
+        dialog.close();
+        setTimeout(() => board.focus(), 0);
+      }
+      document.querySelector('#cancel').addEventListener('click', closeTeacherDialog);
       teacherForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const answer = new FormData(teacherForm).get('answer').trim().toUpperCase();
@@ -173,7 +202,7 @@
         game = result.game;
         draft = '';
         teacherForm.reset();
-        dialog.close();
+        closeTeacherDialog();
         show('New game ready — invite the class to guess!');
         render();
       });
